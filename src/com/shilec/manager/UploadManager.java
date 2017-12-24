@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
+import java.util.Arrays;
 
 import javax.servlet.ServletException;
 import javax.servlet.ServletInputStream;
@@ -91,19 +92,23 @@ public class UploadManager extends HttpServlet {
 				response.sendError(500,ret);
 				return;
 			}
+			System.err.println("ret ===== " + ret);
 		}catch(IOException e) {
 			response.sendError(500,"文件保存失败");
+			e.printStackTrace();
 		}
 		
 		if(end > (length - 1)) {
 			response.setStatus(200);
+			os.write("0".getBytes());
+			System.out.println("=============0");
 			os.flush();
 			os.close();
 			return;
 		}
 		os.write(("{\"code\":0,\"range\":\"" + offset + "-" + length + "\"}").getBytes());
+		System.out.println("{\"code\":0,\"range\":\"" + offset + "-" + length + "\"}");
 		os.flush();
-		os.close();
 	}
 	
 
@@ -130,35 +135,39 @@ public class UploadManager extends HttpServlet {
 		rFile.skipBytes((int) offset);
 		writeFile(is, rFile);
 		System.out.println("保存成功:" + fileName);
+		System.err.println("edn = " + end + ",length = " + length);
 		if(end == length - 1) {
+			System.err.println("删除成功1:" + file.getAbsolutePath());
 			File f  = new File(LOCAL_SAVE_BASE_PATH + File.separator + fileName);
-			file.renameTo(new File(getOnlyOnePath(f)));
+			System.err.println("f = " + f.getAbsolutePath());
+			String path = getOnlyOnePath(f);
+			System.err.println("only path = " + path);
+			file.renameTo(new File(path));
 			file.delete();
 			file = new File(LOCAL_SAVE_BASE_PATH + File.separator + sessionId);
 			file.delete();
-			System.out.println("删除成功:" + file.getAbsolutePath());
+			System.err.println("删除成功:" + file.getAbsolutePath());
 		}
 		return "0";
 	}
 	
 	private String getOnlyOnePath(File file) {
 		File[] files = new File(file.getParent()).listFiles();
-		for(int i = 0; i < Integer.MAX_VALUE; i++) {
-			String path = file.getAbsolutePath();
-			boolean isContain = false;
-			for(File f : files) {
-				if(path.equals(f.getAbsolutePath())) {
-					isContain = true;
-				}
+		System.out.println("files = " + Arrays.asList(files));
+		int count = 0;
+		for(File f : files) {
+			if(f.getName().equals(file.getName())) {
+				count ++;
 			}
-			if(!isContain) {
-				return path;
-			}
-			String ext = path.substring(path.lastIndexOf("."), path.length());
-			path = path.substring(0,path.length() - ext.length());
-			path += "(" + i + ")" + ext;
 		}
-		return file.getAbsolutePath();
+		
+		String name = file.getName().split("\\.")[0];
+		String ext = file.getName().split("\\.")[1];
+		System.out.println("name = " + name + ",ext = " + ext + ",count = " + count);
+		String path = file.getParent() + File.separator + 
+				(count == 0 ? file.getName() : name + "(" +
+						( count) + ")." + ext);
+		return path;
 	} 
 	
 	private void writeFile(InputStream is,RandomAccessFile rFile) throws IOException {
