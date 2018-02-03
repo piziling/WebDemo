@@ -34,9 +34,17 @@ public class DownloadManager extends HttpServlet {
         }
     }
     
-    private void sendFile(String path,long start, long end,OutputStream os) throws Exception {
+    private void sendFile(String path,String root,long start, long end,OutputStream os) throws Exception {
     	
-    	File file = new File(FILE_HOME + File.separator + path);
+    	String basePath = FILE_HOME + "/";
+    	if(root != null && root != "") {
+    		if(!root.endsWith("/")) {
+    			root += "/";
+    		}
+    		basePath = "D://" + root;
+    	}
+    	File file = new File(basePath + path);
+    	System.out.println(basePath + path);
     	if(!file.exists()) {
     		 System.out.println("FILE_HOME 没有设置，请将要下载的文件放到" + FILE_HOME + "下"); 
     		 return;
@@ -64,11 +72,13 @@ public class DownloadManager extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		
 		String path = request.getParameter("path");
+		String root = request.getParameter("root");
 		String headerRange = request.getHeader("Range");
-		if(headerRange == null || headerRange.isEmpty()) {
-			response.sendError(405, "缺少Range");
-			return;
-		}
+		System.out.println(1233213123 + "");
+//		if(headerRange == null || headerRange.isEmpty()) {
+//			response.sendError(405, "缺少Range");
+//			return;
+//		}
 		
 		long start = 0;
 		long end = 0;
@@ -79,12 +89,12 @@ public class DownloadManager extends HttpServlet {
 			start = Long.parseLong(nSize[0]);
 			end = Long.parseLong(nSize[1]);
 		} catch (NumberFormatException | NullPointerException e) {
-			response.sendError(405, "缺少Range");
-			return;
+			//response.sendError(405, "缺少Range");
+			//return;
 		}
 		
 		try {
-			sendFile(path,start,end,response.getOutputStream());
+			sendFile(path,root,start,end,response.getOutputStream());
 		} catch (Exception e) {
 			//response.sendError(500, e.getMessage());
 		}
@@ -93,8 +103,19 @@ public class DownloadManager extends HttpServlet {
 	@Override
 	protected void doHead(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		String path = request.getParameter("path");
-		System.out.println("client request head:" + path);
-		File file = new File(FILE_HOME + File.separator + path);
+		String root = request.getParameter("root");
+		String basePath = FILE_HOME;
+		if(root != null && root != "") {
+			basePath = root;
+		}
+		
+		System.out.println("client request head:" + basePath + File.separator + path);
+		File file = new File(basePath + File.separator + path);
+		if(!file.exists()) {
+			response.setContentLength(0);
+			response.sendError(404);
+			return;
+		}
 		long length = file.length();
 		response.setContentLength((int) length);
 	}
